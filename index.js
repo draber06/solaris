@@ -15,45 +15,70 @@ const subscribe_event = require("./subscribe_event");
 const add_streamer = require("./add_streamer");
 
 const bot = new Discord.Client();
+const db = require("./db");
 
 bot.on("ready", () => {
     console.log("Solaris online!");
 });
 
 bot.on("message", msg => {
-    if (msg.content === "solaris clear") {
-        msg.channel.fetchMessages().then(messages =>
-            messages.forEach(message => {
-                if (message.author.id === bot.user.id) message.delete();
+    const content = msg.content.toLocaleLowerCase();
+
+    // удалить сообщения соляриса из чата
+    if (content === "solaris clear" && msg.author.id == 238379302595461122) {
+        msg.channel
+            .fetchMessages()
+            .then(messages => {
+                messages.forEach(message => {
+                    if (message.author.id === bot.user.id) message.delete();
+                });
             })
-        );
+            .catch(err => console.log(err));
     }
 
-    if (msg.content === "solaris clearall") {
-        msg.channel.fetchMessages().then(messages =>
-            messages.forEach(message => {
-                if (message.deletable) message.delete();
+    // удалить удаляемые сообщния из чата
+    if (content === "solaris clearall" && msg.author.id == 238379302595461122) {
+        msg.channel
+            .fetchMessages()
+            .then(messages => {
+                messages.forEach(message => {
+                    if (message.deletable) message.delete();
+                });
             })
-        );
+            .catch(err => console.log(err));
     }
 
-    if (msg.content === "solaris help") {
-        msg.channel.send(`
-\`\`\`
-solaris clear - удалить сообщния бота из чата
-
-solaris clearall - удалить удаляемые сообщния из чата
-
-solaris add <Имя стримера на Twitch> - добавить стримера в список оповещения
-
-solaris remove <Имя стримера на Twitch> - удалить стримера из списка оповещения
-
-solaris ping - тестовый ответ бота
-\`\`\`
-		`);
+    // Справка
+    if (content === "solaris help") {
+        const help =
+            `\`\`\`` +
+            `solaris add <Имя стримера на Twitch> - добавить стримера в список оповещения\n` +
+            `solaris remove <Имя стримера на Twitch> - удалить стримера из списка оповещения\n` +
+            `solaris streamers - список стримеров\n` +
+            `solaris ping - тестовый ответ бота\n` +
+            `\`\`\``;
+        msg.channel.send(help);
     }
 
-    if (msg.content === "solaris ping") {
+    // Список стримеров
+    if (content === "solaris streamers") {
+        let channel = msg.channel.id;
+        let streamers_list = "Стримеры в списке: ";
+        db()
+            .then(client => {
+                db.Stream.all_in_chanell(channel).then(result => {
+                    for (let i in result) {
+                        streamers_list += ` ${result[i].name}`;
+                    }
+                    msg.channel.send(streamers_list);
+                    client.close();
+                });
+            })
+            .catch(err => console.log(err));
+    }
+
+    // Тестовое сообщение
+    if (content === "solaris ping") {
         msg.channel.send("Хрен вам а не Pong!");
     }
 
@@ -71,16 +96,27 @@ solaris ping - тестовый ответ бота
         });
     }
 });
-
+//
 bot.on("stream_start", user_id => {
-    let streamers = JSON.parse(fs.readFileSync("streamers.json"));
-    let user_name = streamers[user_id].name;
-    let channels = streamers[user_id].channels;
-    let text = `${user_name} начал(а) трансляцию https://www.twitch.tv/${user_name}`;
-    for (let i in channels) {
-        bot.channels.find(x => x.id === channels[i]).send(text);
-    }
-    subscribe_event("subscribe", user_id);
+    db()
+        .then(client => {
+            db.Stream.get(user_id).then(result => {
+                let channels = result[0].channels;
+                let name = result[0].name;
+                let text = `${name} начал(а) трансляцию https://www.twitch.tv/${name}`;
+                channels.forEach(channel_id => {
+                    for (channel of bot.channels) {
+                        if (channel[0] == channel_id) {
+                            channel[1].send(text);
+                        }
+                    }
+                });
+
+                subscribe_event("subscribe", user_id);
+                client.close();
+            });
+        })
+        .catch(err => console.log(err));
 });
 
 bot.login(discord_token);
@@ -95,7 +131,8 @@ server.get("/", (req, res) => {
 });
 
 server.get(/^\/hook/, (req, res) => {
-    res.send("OK");
+    let challenge = req.url.match(/challenge=(.*?)&/)[1];
+    res.send(challenge);
 });
 
 server.post(/^\/hook/, (req, res) => {
@@ -111,13 +148,18 @@ server.post(/^\/hook/, (req, res) => {
 server.listen(process.env.PORT || 5000);
 
 resubscribe = () => {
-    let streamers = JSON.parse(fs.readFileSync("streamers.json"));
+    db()
+        .then(client => {
+            db.Stream.all().then(result => {
+                for (let i in result) {
+                    subscribe_event("unsubscribe", result[i].streamer_id, true);
+                }
+                client.close();
+            });
+        })
+        .catch(err => console.log(err));
 
-    for (strimer_id in streamers) {
-        subscribe_event("unsubscribe", strimer_id, true);
-    }
-
-    setTimeout(resubscribe, 1000 * 60 * 60 * 24);
+    setTimeout(resubscribe, 1000 * 60 * 60 * 24 * 5);
 };
 
 resubscribe();
