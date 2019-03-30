@@ -81,6 +81,7 @@ module.exports.Stream = {
                         let new_channels = result[0].channels;
                         new_channels.splice(i, 1);
                         if (new_channels.length === 0) {
+                            subscribe_event("unsubscribe", streamer_id);
                             return db
                                 .collection("streamers")
                                 .deleteOne({ streamer_id: streamer_id })
@@ -100,6 +101,33 @@ module.exports.Stream = {
                 } else {
                     return "Такого стримера нет в списке";
                 }
+            });
+    },
+
+    channel_delete(channel) {
+        return db
+            .collection("streamers")
+            .find({ channels: { $in: [channel] } })
+            .toArray()
+            .then(result => {
+                result.forEach(el => {
+                    let i = el.channels.indexOf(channel);
+                    let new_channels = el.channels;
+                    let streamer_id = el.streamer_id;
+                    new_channels.splice(i, 1);
+
+                    if (new_channels.length === 0) {
+                        subscribe_event("unsubscribe", streamer_id);
+                        return db.collection("streamers").deleteOne({ streamer_id: streamer_id });
+                    } else {
+                        return db
+                            .collection("streamers")
+                            .updateOne(
+                                { streamer_id: streamer_id },
+                                { $set: { channels: new_channels } }
+                            );
+                    }
+                });
             });
     }
 };

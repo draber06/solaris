@@ -2,20 +2,27 @@
 
 const config = require("./config.json");
 const discord_token = config.discord_token;
+const index_url = config.index_url;
 
 const Discord = require("discord.js");
-const express = require("express");
-const bodyParser = require("body-parser");
-const fs = require("fs");
-
 const request = require("request");
-const index_url = config.index_url;
 
 const subscribe_event = require("./subscribe_event");
 const add_streamer = require("./add_streamer");
 
-const bot = new Discord.Client();
 const db = require("./db");
+const server = require("./server");
+
+const bot = new Discord.Client();
+
+const help =
+    `\`\`\`` +
+    `solaris help - справка\n` +
+    `solaris add <Имя стримера на Twitch> - добавить стримера в список оповещения\n` +
+    `solaris remove <Имя стримера на Twitch> - удалить стримера из списка оповещения\n` +
+    `solaris streamers - список стримеров\n` +
+    `solaris ping - тестовый ответ бота\n` +
+    `\`\`\``;
 
 bot.on("ready", () => {
     console.log("Solaris online!");
@@ -50,13 +57,6 @@ bot.on("message", msg => {
 
     // Справка
     if (content === "solaris help") {
-        const help =
-            `\`\`\`` +
-            `solaris add <Имя стримера на Twitch> - добавить стримера в список оповещения\n` +
-            `solaris remove <Имя стримера на Twitch> - удалить стримера из списка оповещения\n` +
-            `solaris streamers - список стримеров\n` +
-            `solaris ping - тестовый ответ бота\n` +
-            `\`\`\``;
         msg.channel.send(help);
     }
 
@@ -119,33 +119,21 @@ bot.on("stream_start", user_id => {
         .catch(err => console.log(err));
 });
 
-bot.login(discord_token);
-
-// server
-const server = express();
-
-server.use(bodyParser.json());
-
-server.get("/", (req, res) => {
-    res.send("Solaris");
-});
-
-server.get(/^\/hook/, (req, res) => {
-    let challenge = req.url.match(/challenge=(.*?)&/)[1];
-    res.send(challenge);
-});
-
-server.post(/^\/hook/, (req, res) => {
-    res.send("OK");
-    if (req.body.data[0]) {
-        let data = req.body.data[0];
-        if (data.type === "live") {
-            bot.emit("stream_start", data.user_id);
-        }
+bot.on("guildDelete", guild => {
+    for (let channel of guild.channels) {
+        db()
+            .then(client => {
+                db.Stream.channel_delete(channel[0]).then(result => {
+                    client.close();
+                });
+            })
+            .catch(err => console.log(err));
     }
 });
 
-server.listen(process.env.PORT || 5000);
+bot.login(discord_token);
+
+server(bot);
 
 resubscribe = () => {
     db()
