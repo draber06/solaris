@@ -3,7 +3,6 @@ const url = require("./config.json").mongo_url;
 const subscribe_event = require("./subscribe_event");
 
 let db;
-let close;
 
 module.exports = () => {
     return MongoClient.connect(url, { useNewUrlParser: true }).then(client => {

@@ -1,10 +1,8 @@
 const twitch_token = require("./config.json").twitch_token;
 const request = require("request");
-const fs = require("fs");
 const subscribe_event = require("./subscribe_event");
 const db = require("./db");
 
-// ыва
 exports = module.exports = (name, channel_id, callback) => {
     name = name.toLowerCase();
     const options = {

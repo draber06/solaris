@@ -29,7 +29,7 @@ bot.on("ready", () => {
 });
 
 bot.on("message", msg => {
-    const content = msg.content.toLocaleLowerCase();
+    const content = msg.content.toLowerCase();
 
     // удалить сообщения соляриса из чата
     if (content === "solaris clear" && msg.author.id == 238379302595461122) {
@@ -100,21 +100,24 @@ bot.on("message", msg => {
 bot.on("stream_start", user_id => {
     db()
         .then(client => {
-            db.Stream.get(user_id).then(result => {
-                let channels = result[0].channels;
-                let name = result[0].name;
-                let text = `${name} начал(а) трансляцию https://www.twitch.tv/${name}`;
-                channels.forEach(channel_id => {
-                    for (channel of bot.channels) {
-                        if (channel[0] == channel_id) {
-                            channel[1].send(text);
+            db.Stream.get(user_id)
+                .then(result => {
+                    let channels = result[0].channels;
+                    let name = result[0].name;
+                    let text = `${name} начал(а) трансляцию https://www.twitch.tv/${name}`;
+                    channels.forEach(channel_id => {
+                        for (channel of bot.channels) {
+                            if (channel[0] == channel_id) {
+                                channel[1].send(text);
+                            }
                         }
-                    }
-                });
-
-                subscribe_event("subscribe", user_id);
-                client.close();
-            });
+                    });
+                    setTimeout(() => {
+                        subscribe_event("subscribe", user_id);
+                    }, 1000 * 60 * 30);
+                    client.close();
+                })
+                .catch(err => console.log(err));
         })
         .catch(err => console.log(err));
 });
@@ -140,7 +143,7 @@ resubscribe = () => {
         .then(client => {
             db.Stream.all().then(result => {
                 for (let i in result) {
-                    subscribe_event("unsubscribe", result[i].streamer_id, true);
+                    subscribe_event("subscribe", result[i].streamer_id);
                 }
                 client.close();
             });
@@ -152,7 +155,7 @@ resubscribe = () => {
 
 resubscribe();
 
-// чтобы heroku не глушил процесс через пол часа
+// чтобы heroku не глушил процесс через пол часа ва
 let reqTimer = setTimeout(function wakeUp() {
     request(index_url, () => {
         console.log("WAKE UP");
