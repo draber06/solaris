@@ -22,6 +22,7 @@ const help =
     `solaris remove <Имя стримера на Twitch> - удалить стримера из списка оповещения\n` +
     `solaris streamers - список стримеров\n` +
     `solaris ping - тестовый ответ бота\n` +
+    `solaris clear - удалить сообщения бота из чата\n` +
     `\`\`\``;
 
 bot.on("ready", () => {
@@ -32,24 +33,12 @@ bot.on("message", msg => {
     const content = msg.content.toLowerCase();
 
     // удалить сообщения соляриса из чата
-    if (content === "solaris clear" && msg.author.id == 238379302595461122) {
+    if (content === "solaris clear") {
         msg.channel
             .fetchMessages()
             .then(messages => {
                 messages.forEach(message => {
                     if (message.author.id === bot.user.id) message.delete();
-                });
-            })
-            .catch(err => console.log(err));
-    }
-
-    // удалить удаляемые сообщния из чата
-    if (content === "solaris clearall" && msg.author.id == 238379302595461122) {
-        msg.channel
-            .fetchMessages()
-            .then(messages => {
-                messages.forEach(message => {
-                    if (message.deletable) message.delete();
                 });
             })
             .catch(err => console.log(err));
@@ -97,24 +86,34 @@ bot.on("message", msg => {
     }
 });
 //
-bot.on("stream_start", user_id => {
+bot.on("stream_start", data => {
     db()
         .then(client => {
-            db.Stream.get(user_id)
+            db.Stream.get(data.user_id)
                 .then(result => {
-                    let channels = result[0].channels;
-                    let name = result[0].name;
-                    let text = `${name} начал(а) трансляцию https://www.twitch.tv/${name}`;
-                    channels.forEach(channel_id => {
-                        for (channel of bot.channels) {
-                            if (channel[0] == channel_id) {
-                                channel[1].send(text);
+                    let stream_id = result[0].stream_id;
+
+                    if (data.id != stream_id) {
+                        let channels = result[0].channels;
+                        let name = result[0].name;
+
+                        let text =
+                            `@everyone ${name} начал(а) трансляцию: \n` +
+                            `${data.title}\n` +
+                            `https://www.twitch.tv/${name}`;
+
+                        channels.forEach(channel_id => {
+                            for (channel of bot.channels) {
+                                if (channel[0] == channel_id) {
+                                    channel[1].send(text);
+                                }
                             }
-                        }
-                    });
-                    setTimeout(() => {
-                        subscribe_event("subscribe", user_id);
-                    }, 1000 * 60 * 30);
+                        });
+                        db.Stream.steam_id_update(result[0].streamer_id, data.id).catch(err =>
+                            console.log(err)
+                        );
+                    }
+
                     client.close();
                 })
                 .catch(err => console.log(err));

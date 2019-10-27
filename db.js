@@ -61,6 +61,12 @@ module.exports.Stream = {
             });
     },
 
+    steam_id_update(streamer_id, stream_id) {
+        return db
+            .collection("streamers")
+            .updateOne({ streamer_id: streamer_id }, { $set: { stream_id: stream_id } });
+    },
+
     get(streamer_id) {
         return db
             .collection("streamers")

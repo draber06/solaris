@@ -20,7 +20,7 @@ exports = module.exports = bot => {
         if (req.body.data[0]) {
             let data = req.body.data[0];
             if (data.type === "live") {
-                bot.emit("stream_start", data.user_id);
+                bot.emit("stream_start", data);
             }
         }
     });
