@@ -1,13 +1,20 @@
 {
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node index.js"
-    },
-    "dependencies": {
-        "body-parser": "^1.18.3",
-        "discord.js": "11.4.2",
-        "express": "^4.16.4",
-        "mongodb": "^3.1.13",
-        "request": "^2.88.0"
-    }
+  "name": "solaris",
+  "version": "1.0.0",
+  "description": "bot",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "discord.js": "^12.1.1",
+    "express": "^4.17.1",
+    "mongodb": "^3.5.5",
+    "node-fetch": "^2.6.0"
+  }
 }
